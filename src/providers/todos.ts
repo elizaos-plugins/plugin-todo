@@ -3,10 +3,10 @@ import {
   type Memory,
   type Provider,
   type ProviderResult,
-  logger,
-  type UUID,
   type State,
+  type UUID,
   createUniqueUuid,
+  logger,
 } from '@elizaos/core';
 import { createTodoDataService } from '../services/todoDataService';
 
@@ -39,14 +39,6 @@ export const todosProvider: Provider = {
 
       // Get data service
       const dataService = createTodoDataService(runtime);
-
-      // Get user's points (scoped to current interaction context)
-      const userPointsData = await dataService.getUserPoints(
-        message.entityId as UUID,
-        worldId,
-        roomId
-      );
-      const userPoints = userPointsData?.currentPoints || 0;
 
       // Get ALL tasks for THIS ENTITY across all rooms/worlds
       const allEntityTodos = await dataService.getTodos({
@@ -141,9 +133,6 @@ export const todosProvider: Provider = {
       // Build the provider output
       let output = `# User's Todos (Tasks)\n\nThese are the tasks which the agent is managing for the user. This is the actual list of todos, any other is probably from previous conversations.\n\n`;
 
-      // Points summary
-      output += `## Points: ${userPoints}\n`;
-
       // Daily tasks
       output += `\n## Daily Todos\n`;
       output += formattedDailyTasks || 'No daily todos.';
@@ -166,14 +155,12 @@ export const todosProvider: Provider = {
       // Construct response object
       const result: ProviderResult = {
         data: {
-          userPoints,
           dailyTodos,
           oneOffTodos,
           aspirationalTodos,
           completedTodos,
         },
         values: {
-          userPoints: userPoints.toString(),
           dailyTasks: formattedDailyTasks || 'None',
           oneOffTasks: formattedOneOffTasks || 'None',
           aspirationalTasks: formattedAspirationalTasks || 'None',

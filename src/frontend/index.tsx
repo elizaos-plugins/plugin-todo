@@ -24,10 +24,8 @@ import { PlusCircle } from 'lucide-react';
 // NOTE: Adjust this type based on the actual structure returned by IAgentRuntime and modified by API routes
 interface TaskMetadata {
   dueDate?: string; // ISO string
-  streak?: number;
   completedToday?: boolean;
   lastReminderSent?: string; // ISO string
-  pointsAwarded?: number;
   completedAt?: string; // ISO string
   [key: string]: any; // Allow other metadata properties
 }
@@ -163,18 +161,14 @@ const useCompleteTask = () => {
   return useMutation<
     any,
     Error,
-    {
-      taskId: string;
-      context: { entityId?: string | null; worldId?: string | null };
-    }
+    { taskId: string }
   >({
-    mutationFn: async ({ taskId, context }) => {
+    mutationFn: async ({ taskId }) => {
       const response = await fetch(`/api/todos/${taskId}/complete`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(context),
       });
       if (!response.ok) {
         const errorData = await response.text();
@@ -473,16 +467,12 @@ const TaskItem = ({ task }: { task: Task }) => {
   const uncompleteTaskMutation = useUncompleteTask();
   const deleteTaskMutation = useDeleteTask();
   const isCompleted = task.tags?.includes('completed');
-  const { entityId, worldId } = getContextFromUrl();
 
   const handleCheckboxChange = () => {
     if (isCompleted) {
       uncompleteTaskMutation.mutate(task.id);
     } else {
-      completeTaskMutation.mutate({
-        taskId: task.id,
-        context: { entityId, worldId },
-      });
+      completeTaskMutation.mutate({ taskId: task.id });
     }
   };
 
@@ -494,8 +484,7 @@ const TaskItem = ({ task }: { task: Task }) => {
 
   let details = '';
   if (task.tags?.includes('daily')) {
-    const streak = task.metadata?.streak ?? 0;
-    details = `(Daily, Streak: ${streak})`;
+    details = `(Daily)`;
   } else if (task.tags?.includes('one-off')) {
     const priority = task.tags?.find((t) => t.startsWith('priority-'))?.split('-')[1] ?? '4';
     const urgent = task.tags?.includes('urgent') ? ' 🔴 Urgent' : '';
@@ -510,7 +499,6 @@ const TaskItem = ({ task }: { task: Task }) => {
   const completedDate = task.metadata?.completedAt
     ? new Date(task.metadata.completedAt).toLocaleDateString()
     : '';
-  const points = task.metadata?.pointsAwarded ?? 0;
 
   return (
     <div
@@ -539,8 +527,7 @@ const TaskItem = ({ task }: { task: Task }) => {
           <span className="text-xs text-muted-foreground ml-1">{details}</span>
           {isCompleted && (
             <span className="text-xs text-green-600 ml-2">
-              (Completed {completedDate}
-              {points > 0 ? `, +${points} pts` : ''})
+              (Completed {completedDate})
             </span>
           )}
         </Label>

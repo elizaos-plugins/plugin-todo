@@ -280,7 +280,6 @@ export const routes: Route[] = [
         // --- Determine Task Type and Tags ---
         if (type === 'daily') {
           tags.push('daily', 'recurring-daily');
-          metadata.streak = 0; // Initialize streak for daily tasks
           metadata.completedToday = false;
         } else if (type === 'one-off') {
           tags.push('one-off');
@@ -349,10 +348,8 @@ export const routes: Route[] = [
     handler: async (req: any, res: any, runtime: IAgentRuntime) => {
       try {
         const taskId = req.params.id;
-        // Make context optional for points calculation
-        const { entityId, roomId, worldId } = req.body;
 
-        // Task ID is still required
+        // Task ID is required
         if (!taskId) {
           return res.status(400).send('Missing taskId');
         }
@@ -373,114 +370,12 @@ export const routes: Route[] = [
         const metadataUpdate: Record<string, any> = {
           ...task.metadata,
           completedAt: now.toISOString(),
-          pointsAwarded: 0, // Default points to 0
         };
 
-        let pointsMessage = ''; // Default points message
-
-        // --- Points Calculation (only if context is provided) ---
-        if (entityId && task.roomId && worldId) {
-          // Use task.roomId, ensure worldId is passed
-          let pointsReason = 'Task completed';
-          let completionStatus: 'onTime' | 'late' | 'daily' | 'streakBonus' = 'onTime';
-
-          if (task.type === 'daily') {
-            // Update streak
-            const streakData = await dataService.updateStreak(
-              task.id,
-              entityId || task.entityId,
-              true
-            );
-            const newStreak = streakData.currentStreak;
-
-            metadataUpdate.completedToday = true;
-            metadataUpdate.lastCompletedDate = now.toISOString().split('T')[0];
-            metadataUpdate.streak = newStreak;
-            completionStatus = 'daily';
-            pointsReason = `Daily task completed (Streak: ${newStreak})`;
-
-            // Calculate points
-            const basePoints = TodoDataService.calculatePoints(task as any, 'daily');
-            const streakBonusPoints =
-              newStreak > 1 ? TodoDataService.calculatePoints(task as any, 'streakBonus') : 0;
-            const totalPoints = basePoints + streakBonusPoints;
-            metadataUpdate.pointsAwarded = totalPoints;
-
-            // Add points to the user
-            if (totalPoints > 0) {
-              let combinedReason = pointsReason;
-              if (streakBonusPoints > 0) combinedReason += ` + Streak Bonus`;
-
-              await dataService.addUserPoints(
-                entityId || task.entityId,
-                worldId || task.worldId,
-                task.roomId,
-                runtime.agentId,
-                totalPoints,
-                combinedReason,
-                task.id
-              );
-
-              pointsMessage = ` Awarded ${totalPoints} points.`;
-              logger.info(
-                `Awarded ${totalPoints} points to ${entityId} for task ${taskId}. Reason: ${combinedReason}`
-              );
-            }
-          } else if (task.type === 'one-off' && task.dueDate) {
-            if (now.getTime() > new Date(task.dueDate).getTime()) {
-              completionStatus = 'late';
-              pointsReason = 'Task completed (late)';
-            } else {
-              completionStatus = 'onTime';
-              pointsReason = 'Task completed (on time)';
-            }
-
-            // Calculate points
-            const pointsToAdd = TodoDataService.calculatePoints(task as any, completionStatus);
-            metadataUpdate.pointsAwarded = pointsToAdd;
-
-            if (pointsToAdd > 0) {
-              await dataService.addUserPoints(
-                entityId || task.entityId,
-                worldId || task.worldId,
-                task.roomId,
-                runtime.agentId,
-                pointsToAdd,
-                pointsReason,
-                task.id
-              );
-              pointsMessage = ` Awarded ${pointsToAdd} points.`;
-            }
-          } else if (task.type === 'aspirational') {
-            pointsReason = 'Aspirational goal achieved';
-            const pointsToAdd = 50; // Fixed points for aspirational goals
-            metadataUpdate.pointsAwarded = pointsToAdd;
-
-            await dataService.addUserPoints(
-              entityId || task.entityId,
-              worldId || task.worldId,
-              task.roomId,
-              runtime.agentId,
-              pointsToAdd,
-              pointsReason,
-              task.id
-            );
-            pointsMessage = ` Awarded ${pointsToAdd} points.`;
-          }
-        } else {
-          // Log if points are skipped due to missing context
-          if (!entityId || !task.roomId || !worldId) {
-            logger.warn(
-              `Skipping points calculation for task ${taskId} completion due to missing entityId, roomId, or worldId.`
-            );
-          }
-          // Handle non-point related metadata updates for daily tasks even if context is missing
-          if (task.type === 'daily') {
-            metadataUpdate.completedToday = true;
-            metadataUpdate.lastCompletedDate = now.toISOString().split('T')[0];
-            const currentStreak = metadataUpdate.streak || 0;
-            metadataUpdate.streak = currentStreak + 1;
-          }
+        // Handle daily task metadata
+        if (task.type === 'daily') {
+          metadataUpdate.completedToday = true;
+          metadataUpdate.lastCompletedDate = now.toISOString().split('T')[0];
         }
 
         // Update the task
@@ -493,13 +388,12 @@ export const routes: Route[] = [
         // Return the final task state
         const updatedTask = await dataService.getTodo(taskId);
         res.json({
-          message: `Task ${taskId} completed.${pointsMessage}`,
+          message: `Task ${taskId} completed.`,
           task: updatedTask,
         });
       } catch (error: any) {
         console.error(`Error completing todo ${req.params.id}:`, error);
-        logger.error(`Error completing todo ${req.params.id}:`, error); // Added logger
-        res.status(500).send(`Error completing todo: ${error.message}`);
+        res.status(500).send('Error completing todo');
       }
     },
   },
@@ -529,19 +423,14 @@ export const routes: Route[] = [
         // --- Logic to reverse completion ---
         const metadataUpdate = { ...task.metadata };
         delete metadataUpdate.completedAt;
-        delete metadataUpdate.pointsAwarded; // Optionally remove awarded points
-        // Optionally handle streak reduction for daily tasks if needed
+        // Optionally handle daily task metadata
         if (task.type === 'daily' && metadataUpdate.completedToday) {
-          // Simple approach: just mark not completed today, streak logic can be complex
           delete metadataUpdate.completedToday;
-          // Optionally decrement streak if the completion was *today*
-          // const currentStreak = metadataUpdate.streak || 0;
-          // if (currentStreak > 0) metadataUpdate.streak = currentStreak - 1;
         }
 
         await dataService.updateTodo(taskId, {
           isCompleted: false,
-          completedAt: null,
+          completedAt: undefined,
           metadata: metadataUpdate,
         });
 
@@ -680,65 +569,7 @@ export const routes: Route[] = [
       }
     },
   },
-  // API route to get user points
-  {
-    type: 'GET',
-    path: '/api/points/:entityId',
-    handler: async (req: any, res: any, runtime: IAgentRuntime) => {
-      try {
-        const { entityId } = req.params;
-        const { roomId, worldId } = req.query; // Optional filters
 
-        if (!entityId) {
-          return res.status(400).send('Missing entityId');
-        }
-
-        const dataService = createTodoDataService(runtime);
-
-        if (roomId && worldId) {
-          // Get points for specific room and world
-          const points = await dataService.getUserPoints(entityId, worldId, roomId);
-          res.json(points || { currentPoints: 0, totalPointsEarned: 0 });
-        } else {
-          // Get all points records for this entity across all rooms
-          const db = runtime.db;
-          if (!db) {
-            return res.status(500).json({ error: 'Database not available' });
-          }
-
-          // Import schema tables
-          const { userPointsTable, pointHistoryTable } = await import('./schema');
-          const { eq } = await import('drizzle-orm');
-
-          // Get all user points records for this entity
-          const userPoints = await db
-            .select()
-            .from(userPointsTable)
-            .where(eq(userPointsTable.entityId, entityId));
-
-          // Get point history
-          const pointsIds = userPoints.map((p) => p.id);
-          const history =
-            pointsIds.length > 0
-              ? await db
-                  .select()
-                  .from(pointHistoryTable)
-                  .where(sql`${pointHistoryTable.userPointsId} IN ${pointsIds}`)
-                  .orderBy(sql`${pointHistoryTable.createdAt} DESC`)
-              : [];
-
-          res.json({
-            points: userPoints,
-            history: history,
-          });
-        }
-      } catch (error) {
-        console.error(`Error fetching points for ${req.params.entityId}:`, error);
-        logger.error(`Error fetching points for ${req.params.entityId}:`, error);
-        res.status(500).send('Error fetching points');
-      }
-    },
-  },
 ];
 
 export default routes;

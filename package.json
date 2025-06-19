@@ -17,11 +17,11 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/elizaos-plugins/plugin-auto"
+    "url": "https://github.com/elizaos-plugins/plugin-autonomous"
   },
   "homepage": "https://elizaos.ai",
   "bugs": {
-    "url": "https://github.com/elizaos-plugins/plugin-auto/issues"
+    "url": "https://github.com/elizaos-plugins/plugin-autonomous/issues"
   },
   "exports": {
     "./package.json": "./package.json",
@@ -41,6 +41,7 @@
   ],
   "dependencies": {
     "@elizaos/core": "workspace:*",
+    "@elizaos/plugin-rolodex": "workspace:*",
     "drizzle-orm": "^0.30.10",
     "start-server-and-test": "^2.0.5",
     "zod": "3.24.2"
@@ -48,6 +49,7 @@
   "peerDependencies": {},
   "devDependencies": {
     "@elizaos/cli": "^1.0.0",
+    "@elizaos/plugin-rolodex": "workspace:*",
     "cypress": "^13.6.3",
     "dotenv": "16.4.5",
     "drizzle-kit": "^0.21.4",
@@ -74,7 +76,6 @@
     "publish": "elizaos publish",
     "format": "prettier --write ./src",
     "format:check": "prettier --check ./src",
-    "db:generate": "drizzle-kit generate",
     "__test__": "bun test"
   },
   "publishConfig": {

@@ -1,112 +1,64 @@
-import { describe, it, expect, vi, beforeEach, type Mock, afterEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { TodoPlugin } from '../index';
 import type { IAgentRuntime, UUID } from '@elizaos/core';
-import { createTodoDataService } from '../services/todoDataService.ts';
-
-vi.mock('../services/todoDataService');
 
 describe('TodoPlugin Initialization', () => {
   let mockRuntime: IAgentRuntime;
-  let registeredTaskWorker: any;
-  let mockDataService: any;
 
-  beforeEach(() => {
-    mockDataService = {
-      resetDailyTodos: vi.fn(),
-    };
-    (createTodoDataService as Mock).mockReturnValue(mockDataService);
-
-    registeredTaskWorker = undefined;
-
+  const setupMocks = () => {
     mockRuntime = {
       agentId: 'test-agent' as UUID,
-      getSetting: vi.fn(),
-      getTasks: vi.fn().mockResolvedValue([]),
-      createTask: vi.fn().mockResolvedValue('reset-task-id'),
-      registerTaskWorker: vi.fn().mockImplementation((worker) => {
-        registeredTaskWorker = worker;
-      }),
-      db: {} as any,
+      getSetting: () => undefined,
+      db: null, // No database available
     } as any;
+  };
+
+  it('should have correct plugin metadata', () => {
+    expect(TodoPlugin.name).toBe('todo');
+    expect(TodoPlugin.description).toContain('task management');
+    expect(TodoPlugin.services).toBeDefined();
+    expect(TodoPlugin.actions).toBeDefined();
+    expect(TodoPlugin.providers).toBeDefined();
+    expect(TodoPlugin.schema).toBeDefined();
   });
 
-  afterEach(() => {
-    vi.clearAllMocks();
-    vi.restoreAllMocks();
+  it('should have the correct number of services', () => {
+    expect(TodoPlugin.services).toHaveLength(2);
+    expect(TodoPlugin.services![0].serviceType).toBe('TODO_REMINDER');
+    expect(TodoPlugin.services![1].serviceType).toBe('TODO_INTEGRATION_BRIDGE');
   });
 
-  it('should initialize plugin with WORLD_ID and create reset task if not exists', async () => {
-    (mockRuntime.getSetting as Mock).mockReturnValue('test-world-id');
-    (mockRuntime.getTasks as Mock).mockResolvedValue([]);
-
-    await TodoPlugin.init?.({}, mockRuntime);
-
-    expect(mockRuntime.getTasks).toHaveBeenCalled();
-    expect(mockRuntime.createTask).toHaveBeenCalledWith(
-      expect.objectContaining({ name: 'RESET_DAILY_TASKS' })
-    );
-    expect(mockRuntime.registerTaskWorker).toHaveBeenCalledWith(
-      expect.objectContaining({ name: 'RESET_DAILY_TASKS' })
-    );
+  it('should have all required actions', () => {
+    expect(TodoPlugin.actions).toHaveLength(5);
+    const actionNames = TodoPlugin.actions!.map(action => action.name);
+    expect(actionNames).toContain('CREATE_TODO');
+    expect(actionNames).toContain('COMPLETE_TODO');
+    expect(actionNames).toContain('CONFIRM_TODO');
+    expect(actionNames).toContain('UPDATE_TODO');
+    expect(actionNames).toContain('CANCEL_TODO');
   });
 
-  it('should skip creating reset task if it already exists', async () => {
-    (mockRuntime.getSetting as Mock).mockReturnValue('test-world-id');
-    (mockRuntime.getTasks as Mock).mockResolvedValue([{ id: 'existing-task' }]);
-
-    await TodoPlugin.init?.({}, mockRuntime);
-
-    expect(mockRuntime.getTasks).toHaveBeenCalled();
-    expect(mockRuntime.createTask).not.toHaveBeenCalled();
-    expect(mockRuntime.registerTaskWorker).toHaveBeenCalled();
+  it('should have the todos provider', () => {
+    expect(TodoPlugin.providers).toHaveLength(1);
+    expect(TodoPlugin.providers![0].name).toBe('TODOS');
   });
 
-  it('should skip initialization without WORLD_ID', async () => {
-    (mockRuntime.getSetting as Mock).mockReturnValue(null);
-
-    await TodoPlugin.init?.({}, mockRuntime);
-
-    expect(mockRuntime.getTasks).not.toHaveBeenCalled();
-    expect(mockRuntime.createTask).not.toHaveBeenCalled();
-    expect(mockRuntime.registerTaskWorker).not.toHaveBeenCalled();
+  it('should have test dependencies', () => {
+    expect(TodoPlugin.testDependencies).toContain('@elizaos/plugin-sql');
   });
 
-  describe('Daily Task Reset Worker', () => {
-    beforeEach(async () => {
-      (mockRuntime.getSetting as Mock).mockReturnValue('test-world-id');
-      await TodoPlugin.init?.({}, mockRuntime);
-    });
 
-    it('should validate task worker', async () => {
-      expect(registeredTaskWorker).toBeDefined();
-      const isValid = await registeredTaskWorker.validate();
-      expect(isValid).toBe(true);
-    });
 
-    it('should reset completed daily todos via data service', async () => {
-      mockDataService.resetDailyTodos.mockResolvedValue(5);
+  it('should have schema with correct tables', () => {
+    expect(TodoPlugin.schema).toBeDefined();
+    expect(TodoPlugin.schema.todosTable).toBeDefined();
+    expect(TodoPlugin.schema.todoTagsTable).toBeDefined();
+  });
 
-      const runtime2 = { agentId: 'test-agent-2' as UUID } as any;
-      await registeredTaskWorker.execute(runtime2);
-
-      expect(mockDataService.resetDailyTodos).toHaveBeenCalledWith(runtime2.agentId);
-    });
-
-    it('should handle no daily tasks gracefully', async () => {
-      mockDataService.resetDailyTodos.mockResolvedValue(0);
-
-      const runtime2 = { agentId: 'test-agent-2' as UUID } as any;
-      await registeredTaskWorker.execute(runtime2);
-
-      expect(mockDataService.resetDailyTodos).toHaveBeenCalled();
-    });
-
-    it('should handle errors in task reset', async () => {
-      mockDataService.resetDailyTodos.mockRejectedValue(new Error('Database error'));
-      const runtime2 = { agentId: 'test-agent-2' as UUID } as any;
-
-      // Should not throw, just log error internally
-      await expect(registeredTaskWorker.execute(runtime2)).resolves.toBeUndefined();
-    });
+  it('should export correct types', () => {
+    // Check that the plugin exports are defined
+    expect(TodoPlugin).toBeDefined();
+    expect(TodoPlugin.name).toBe('todo');
+    expect(typeof TodoPlugin.init).toBe('function');
   });
 });

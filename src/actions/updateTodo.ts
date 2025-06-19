@@ -144,7 +144,7 @@ async function extractTaskSelection(
     const finalResult: TaskSelection = {
       taskId: parsedResult.taskId === 'null' ? '' : String(parsedResult.taskId || ''),
       taskName: parsedResult.taskName === 'null' ? '' : String(parsedResult.taskName || ''),
-      isFound: String(parsedResult.isFound).toLowerCase() === 'true',
+      isFound: String(parsedResult.isFound) === 'true',
     };
 
     return finalResult;
@@ -219,13 +219,13 @@ async function extractTaskUpdate(
       }
     }
     if (finalUpdate.urgent !== undefined)
-      finalUpdate.urgent = String(finalUpdate.urgent).toLowerCase() === 'true';
+      finalUpdate.urgent = String(finalUpdate.urgent) === 'true';
     if (finalUpdate.dueDate === 'null') finalUpdate.dueDate = null;
     else if (finalUpdate.dueDate === undefined) delete finalUpdate.dueDate;
     else finalUpdate.dueDate = String(finalUpdate.dueDate);
 
     if (finalUpdate.recurring) {
-      const recurringVal = String(finalUpdate.recurring).toLowerCase();
+      const recurringVal = String(finalUpdate.recurring);
       if (['daily', 'weekly', 'monthly'].includes(recurringVal)) {
         finalUpdate.recurring = recurringVal as 'daily' | 'weekly' | 'monthly';
       } else {

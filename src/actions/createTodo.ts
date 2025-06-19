@@ -1,7 +1,8 @@
 import {
   type Action,
   type ActionExample,
-  composePrompt,
+  createUniqueUuid,
+  formatMessages,
   type HandlerCallback,
   type IAgentRuntime,
   logger,
@@ -9,11 +10,7 @@ import {
   ModelType,
   parseKeyValueXml,
   type State,
-  formatMessages,
   type UUID,
-  type Task,
-  ChannelType,
-  createUniqueUuid,
 } from '@elizaos/core';
 import { createTodoDataService } from '../services/todoDataService';
 
@@ -138,7 +135,7 @@ async function extractTodoInfo(
         ? (parseInt(String(validatedTodo.priority), 10) as 1 | 2 | 3 | 4)
         : 3;
       finalTodo.urgent = validatedTodo.urgent
-        ? String(validatedTodo.urgent).toLowerCase() === 'true'
+        ? validatedTodo.urgent === true || validatedTodo.urgent === 'true'
         : false;
       finalTodo.dueDate =
         validatedTodo.dueDate === 'null' ? undefined : String(validatedTodo.dueDate || '');
@@ -217,9 +214,7 @@ export const createTodoAction: Action = {
         isCompleted: false,
       });
 
-      const duplicateTodo = existingTodos.find(
-        (t) => todo && t.name.trim().toLowerCase() === todo.name.trim().toLowerCase()
-      );
+      const duplicateTodo = existingTodos.find((t) => todo && t.name.trim() === todo.name.trim());
 
       if (duplicateTodo) {
         logger.warn(
@@ -252,12 +247,11 @@ export const createTodoAction: Action = {
         createdAt: new Date().toISOString(),
       };
       if (todo.description) metadata.description = todo.description;
-      if (todo.taskType === 'daily') metadata.streak = 0;
       if (todo.dueDate) metadata.dueDate = todo.dueDate;
 
       const room = state.data?.room ?? (await runtime.getRoom(message.roomId));
       const worldId =
-        room?.worldId || message.worldId || createUniqueUuid(runtime.agentId, message.entityId);
+        room?.worldId || message.worldId || createUniqueUuid(runtime, message.entityId);
 
       logger.debug(`[createTodoAction] Creating task with:`, {
         name: todo.name,
@@ -292,7 +286,7 @@ export const createTodoAction: Action = {
       // Step 6: Send success message
       let successMessage = '';
       if (todo.taskType === 'daily') {
-        successMessage = `✅ Added new daily task: "${todo.name}". Complete this regularly to build your streak!`;
+        successMessage = `✅ Added new daily task: "${todo.name}". This task will reset each day.`;
       } else if (todo.taskType === 'one-off') {
         const priorityText = `Priority ${todo.priority || 'default'}`;
         const urgentText = todo.urgent ? ', Urgent' : '';
@@ -375,7 +369,7 @@ export const createTodoAction: Action = {
       {
         name: '{{name2}}',
         content: {
-          text: "✅ Added new daily task: 'Do 50 pushups'. Complete this regularly to build your streak!",
+          text: "✅ Added new daily task: 'Do 50 pushups'. This task will reset each day.",
           actions: ['CREATE_TODO'],
         },
       },

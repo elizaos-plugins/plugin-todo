@@ -93,7 +93,7 @@ async function extractTaskCancellation(
     const finalResult: TaskCancellation = {
       taskId: parsedResult.taskId === 'null' ? '' : String(parsedResult.taskId || ''),
       taskName: parsedResult.taskName === 'null' ? '' : String(parsedResult.taskName || ''),
-      isFound: String(parsedResult.isFound).toLowerCase() === 'true',
+      isFound: String(parsedResult.isFound) === 'true',
     };
 
     return finalResult;

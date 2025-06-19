@@ -13,7 +13,7 @@ import {
   type UUID,
   formatMessages,
 } from '@elizaos/core';
-import { createTodoDataService, type TodoData, TodoDataService } from '../services/todoDataService';
+import { createTodoDataService, type TodoData } from '../services/todoDataService';
 
 // Interface for task completion properties
 interface TaskCompletion {
@@ -89,7 +89,7 @@ async function extractTaskCompletion(
     const finalResult: TaskCompletion = {
       taskId: parsedResult.taskId === 'null' ? '' : String(parsedResult.taskId || ''),
       taskName: parsedResult.taskName === 'null' ? '' : String(parsedResult.taskName || ''),
-      isFound: String(parsedResult.isFound).toLowerCase() === 'true',
+      isFound: String(parsedResult.isFound) === 'true',
     };
 
     return finalResult;
@@ -100,149 +100,13 @@ async function extractTaskCompletion(
 }
 
 /**
- * Processes a daily task completion, updating streak and awarding points
- */
-async function processDailyTaskCompletion(
-  runtime: IAgentRuntime,
-  dataService: any,
-  task: TodoData,
-  entityId: UUID,
-  roomId: UUID,
-  worldId: UUID
-): Promise<{ pointsAwarded: number; newStreak: number }> {
-  // Get or update streak
-  const streakData = await dataService.updateStreak(task.id, entityId, true);
-  const newStreak = streakData.currentStreak;
-
-  // Calculate points - base points for daily completion + streak bonus
-  const basePoints = TodoDataService.calculatePoints(task, 'daily');
-  const streakPoints = newStreak > 1 ? TodoDataService.calculatePoints(task, 'streakBonus') : 0;
-  const totalPoints = basePoints + streakPoints;
-
-  // Mark as completed
-  await dataService.updateTodo(task.id, {
-    isCompleted: true,
-    completedAt: new Date(),
-    metadata: {
-      ...task.metadata,
-      streak: newStreak,
-      lastCompletedAt: new Date().toISOString(),
-      completedToday: true,
-      pointsAwarded: totalPoints,
-    },
-  });
-
-  // Award points to the user
-  await dataService.addUserPoints(
-    entityId,
-    worldId,
-    roomId,
-    runtime.agentId,
-    totalPoints,
-    `Completed daily task "${task.name}" (Streak: ${newStreak})`,
-    task.id
-  );
-
-  return { pointsAwarded: totalPoints, newStreak };
-}
-
-/**
- * Processes a one-off task completion, checking if it was completed on time
- */
-async function processOneOffTaskCompletion(
-  runtime: IAgentRuntime,
-  dataService: any,
-  task: TodoData,
-  entityId: UUID,
-  roomId: UUID,
-  worldId: UUID
-): Promise<{ pointsAwarded: number; completedOnTime: boolean }> {
-  let completedOnTime = true;
-  let pointStatus: 'onTime' | 'late' = 'onTime';
-
-  // Check if the task had a due date and if it's overdue
-  if (task.dueDate) {
-    const now = new Date();
-    completedOnTime = now <= task.dueDate;
-    pointStatus = completedOnTime ? 'onTime' : 'late';
-  }
-
-  // Calculate points based on priority, urgency, and whether it was completed on time
-  const points = TodoDataService.calculatePoints(task, pointStatus);
-
-  // Mark the task as completed
-  await dataService.updateTodo(task.id, {
-    isCompleted: true,
-    completedAt: new Date(),
-    metadata: {
-      ...task.metadata,
-      completedAt: new Date().toISOString(),
-      completedOnTime,
-      pointsAwarded: points,
-    },
-  });
-
-  // Award points to the user
-  await dataService.addUserPoints(
-    entityId,
-    worldId,
-    roomId,
-    runtime.agentId,
-    points,
-    `Completed task "${task.name}" (${completedOnTime ? 'On time' : 'Late'})`,
-    task.id
-  );
-
-  return { pointsAwarded: points, completedOnTime };
-}
-
-/**
- * Processes an aspirational goal completion
- */
-async function processAspirationalTaskCompletion(
-  runtime: IAgentRuntime,
-  dataService: any,
-  task: TodoData,
-  entityId: UUID,
-  roomId: UUID,
-  worldId: UUID
-): Promise<{ pointsAwarded: number }> {
-  // Fixed points for completing an aspirational goal
-  const points = 50;
-
-  // Mark the task as completed
-  await dataService.updateTodo(task.id, {
-    isCompleted: true,
-    completedAt: new Date(),
-    metadata: {
-      ...task.metadata,
-      completedAt: new Date().toISOString(),
-      pointsAwarded: points,
-    },
-  });
-
-  // Award points to the user
-  await dataService.addUserPoints(
-    entityId,
-    worldId,
-    roomId,
-    runtime.agentId,
-    points,
-    `Achieved aspirational goal "${task.name}"`,
-    task.id
-  );
-
-  return { pointsAwarded: points };
-}
-
-/**
  * The COMPLETE_TODO action allows users to mark a task as completed.
  */
 export const completeTodoAction: Action = {
   name: 'COMPLETE_TODO',
   similes: ['MARK_COMPLETE', 'FINISH_TASK', 'DONE', 'TASK_DONE', 'TASK_COMPLETED'],
   description:
-    'Marks a todo item as completed, awarding points based on the type of task, priority, and whether it was completed on time.',
+    'Marks a todo item as completed.',
 
   validate: async (runtime: IAgentRuntime, message: Memory): Promise<boolean> => {
     // Only validate if there are active (non-completed) todos in the current room
@@ -293,11 +157,6 @@ export const completeTodoAction: Action = {
       const roomId = message.roomId;
       const dataService = createTodoDataService(runtime);
 
-      // Fetch room details directly to get worldId
-      const roomDetails = await runtime.getRoom(roomId);
-      logger.debug('Room details:', roomDetails);
-      const worldId = roomDetails?.worldId || createUniqueUuid(runtime.agentId, message.entityId);
-
       // Get all incomplete todos for this room
       const availableTodos = await dataService.getTodos({
         roomId: roomId,
@@ -347,65 +206,30 @@ export const completeTodoAction: Action = {
         return;
       }
 
-      // Process the task completion based on its type
+      // Mark the task as completed
+      await dataService.updateTodo(task.id, {
+        isCompleted: true,
+        completedAt: new Date(),
+        metadata: {
+          ...task.metadata,
+          completedAt: new Date().toISOString(),
+        },
+      });
+
+      // Generate response text based on task type
       let responseText = '';
 
       if (task.type === 'daily') {
-        // Process daily task
-        const { pointsAwarded, newStreak } = await processDailyTaskCompletion(
-          runtime,
-          dataService,
-          task,
-          message.entityId as UUID,
-          roomId,
-          worldId
-        );
-
-        responseText =
-          `🎉 Great job completing your daily task: "${task.name}"!\n\n` +
-          `You've earned ${pointsAwarded} points. Current streak: ${newStreak} day${newStreak === 1 ? '' : 's'}.`;
+        responseText = `✅ Daily task completed: "${task.name}"`;
       } else if (task.type === 'one-off') {
-        // Process one-off task
-        const { pointsAwarded, completedOnTime } = await processOneOffTaskCompletion(
-          runtime,
-          dataService,
-          task,
-          message.entityId as UUID,
-          roomId,
-          worldId
-        );
-
+        const completedOnTime = task.dueDate ? new Date() <= task.dueDate : true;
         const timeStatus = completedOnTime ? 'on time' : 'late';
         const priority = task.priority || 4;
 
-        responseText =
-          `✅ Task completed: "${task.name}" (Priority ${priority}, ${timeStatus}).\n\n` +
-          `You've earned ${pointsAwarded} points.`;
+        responseText = `✅ Task completed: "${task.name}" (Priority ${priority}, ${timeStatus})`;
       } else if (task.type === 'aspirational') {
-        // Process aspirational goal
-        const { pointsAwarded } = await processAspirationalTaskCompletion(
-          runtime,
-          dataService,
-          task,
-          message.entityId as UUID,
-          roomId,
-          worldId
-        );
-
-        responseText =
-          `🌟 Congratulations on achieving your aspirational goal: "${task.name}"!\n\n` +
-          `This is a significant accomplishment. You've earned ${pointsAwarded} points.`;
+        responseText = `🌟 Congratulations on achieving your aspirational goal: "${task.name}"!\n\nThis is a significant accomplishment.`;
       } else {
-        // Generic completion for any other todo type
-        await dataService.updateTodo(task.id, {
-          isCompleted: true,
-          completedAt: new Date(),
-          metadata: {
-            ...task.metadata,
-            completedAt: new Date().toISOString(),
-          },
-        });
-
         responseText = `✅ Marked "${task.name}" as completed.`;
       }
 
@@ -439,7 +263,7 @@ export const completeTodoAction: Action = {
       {
         name: '{{name2}}',
         content: {
-          text: '✅ Task completed: "Finish taxes" (Priority 2, on time).\n\nYou\'ve earned 30 points.',
+          text: '✅ Task completed: "Finish taxes" (Priority 2, on time)',
           actions: ['COMPLETE_TODO'],
         },
       },
@@ -454,7 +278,7 @@ export const completeTodoAction: Action = {
       {
         name: '{{name2}}',
         content: {
-          text: '🎉 Great job completing your daily task: "Do 50 pushups"!\n\nYou\'ve earned 15 points. Current streak: 3 days.',
+          text: '✅ Daily task completed: "Do 50 pushups"',
           actions: ['COMPLETE_TODO'],
         },
       },
@@ -469,7 +293,7 @@ export const completeTodoAction: Action = {
       {
         name: '{{name2}}',
         content: {
-          text: '🌟 Congratulations on achieving your aspirational goal: "Read more books"!\n\nThis is a significant accomplishment. You\'ve earned 50 points.',
+          text: '🌟 Congratulations on achieving your aspirational goal: "Read more books"!\n\nThis is a significant accomplishment.',
           actions: ['COMPLETE_TODO'],
         },
       },

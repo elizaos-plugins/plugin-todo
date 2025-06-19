@@ -1,28 +1,27 @@
 import type { Plugin } from '@elizaos/core';
-import { type IAgentRuntime, logger, type ServiceTypeName } from '@elizaos/core';
-import { migrate } from 'drizzle-orm/pglite/migrator';
-import path from 'node:path';
+import { type IAgentRuntime, logger } from '@elizaos/core';
 
-import { routes } from './apis';
+import { routes } from './apis.js';
 
 // Import actions
-import { cancelTodoAction } from './actions/cancelTodo';
-import { completeTodoAction } from './actions/completeTodo';
-import { createTodoAction } from './actions/createTodo';
-import { updateTodoAction } from './actions/updateTodo';
+import { cancelTodoAction } from './actions/cancelTodo.js';
+import { completeTodoAction } from './actions/completeTodo.js';
+import { confirmTodoAction } from './actions/confirmTodo.js';
+import { createTodoAction } from './actions/createTodo.js';
+import { updateTodoAction } from './actions/updateTodo.js';
 
 // Import providers
-import { todosProvider } from './providers/todos';
+import { todosProvider } from './providers/todos.js';
 
 // Import services
-import { TodoReminderService } from './services/reminderService';
+import { TodoReminderService } from './services/reminderService.js';
+import { TodoIntegrationBridge } from './services/integrationBridge.js';
 
 // Import schema
-import { todoSchema } from './schema';
-import { createTodoDataService } from './services/todoDataService';
+import { todoSchema } from './schema.js';
 
 // Import tests
-import { TodoPluginE2ETestSuite } from './tests';
+import { TodoPluginE2ETestSuite } from './tests.js';
 
 /**
  * The TodoPlugin provides task management functionality with daily recurring and one-off tasks,
@@ -33,58 +32,62 @@ export const TodoPlugin: Plugin = {
   name: 'todo',
   description: 'Provides task management functionality with daily recurring and one-off tasks.',
   providers: [todosProvider],
-  testDependencies: ['@elizaos/plugin-sql'],
-  actions: [createTodoAction, completeTodoAction, updateTodoAction, cancelTodoAction],
-  services: [TodoReminderService],
+  dependencies: ['@elizaos/plugin-sql', '@elizaos/plugin-rolodex'],
+  testDependencies: ['@elizaos/plugin-sql', '@elizaos/plugin-rolodex'],
+  actions: [
+    createTodoAction,
+    completeTodoAction,
+    confirmTodoAction,
+    updateTodoAction,
+    cancelTodoAction,
+  ],
+  services: [TodoReminderService, TodoIntegrationBridge],
   routes,
   schema: todoSchema,
   tests: [TodoPluginE2ETestSuite],
 
   async init(config: Record<string, string>, runtime: IAgentRuntime): Promise<void> {
-    logger.info('TodoPlugin initialized');
+    try {
+      // Database migrations are handled by the SQL plugin
+      if (runtime.db) {
+        logger.info('Database available, TodoPlugin ready for operation');
+      } else {
+        logger.warn('No database instance available, operations will be limited');
+      }
 
-    // Setup daily task reset for recurring tasks
-    const worldId = runtime.getSetting('WORLD_ID');
-    if (!worldId) {
-      logger.warn('TodoPlugin: No WORLD_ID found, skipping daily task reset setup');
-      return;
-    }
+      // Check for rolodex plugin availability
+      const messageDeliveryService = runtime.getService('MESSAGE_DELIVERY' as any);
+      if (messageDeliveryService) {
+        logger.info('Rolodex message delivery service available - external notifications enabled');
+      } else {
+        logger.warn('Rolodex not available - only in-app notifications will work');
+      }
 
-    // Register the task worker
-    runtime.registerTaskWorker({
-      name: 'RESET_DAILY_TASKS',
-      validate: async () => true,
-      execute: async (runtime: IAgentRuntime) => {
-        logger.info('Executing daily task reset');
-        try {
-          const dataService = createTodoDataService(runtime);
-          const count = await dataService.resetDailyTodos(runtime.agentId);
-          logger.info(`Reset ${count} daily tasks.`);
-        } catch (error) {
-          logger.error('Error resetting daily tasks:', error);
-        }
-      },
-    });
-
-    // Check if the recurring task already exists to trigger the worker
-    const existingTasks = await runtime.getTasks({
-      tags: ['system', 'recurring-daily', 'RESET_DAILY_TASKS'],
-    });
-
-    if (existingTasks.length === 0) {
-      const resetTaskId = await runtime.createTask({
-        name: 'RESET_DAILY_TASKS',
-        description: 'Resets all completed daily todos at the start of each day',
-        tags: ['system', 'recurring-daily', 'RESET_DAILY_TASKS'],
-        metadata: {
-          updateInterval: 24 * 60 * 60 * 1000, // 24 hours
-        },
-      });
-      logger.info(`TodoPlugin: Daily task reset scheduled with id: ${resetTaskId}`);
-    } else {
-      logger.info('Daily task reset task already exists.');
+      logger.info('TodoPlugin initialized with reminder and integration capabilities');
+    } catch (error) {
+      logger.error('Error initializing TodoPlugin:', error);
+      throw error;
     }
   },
 };
 
 export default TodoPlugin;
+
+// Export discoverable services for external use
+export { TodoReminderService } from './services/reminderService.js';
+export { TodoIntegrationBridge } from './services/integrationBridge.js';
+
+// Export internal managers for advanced usage
+export { NotificationManager } from './services/notificationManager.js';
+export { CacheManager } from './services/cacheManager.js';
+
+// Export data service utilities
+export { createTodoDataService } from './services/todoDataService.js';
+export type { TodoData } from './services/todoDataService.js';
+
+// Export types
+export type { CacheEntry, CacheStats } from './services/cacheManager.js';
+export type { NotificationData, NotificationPreferences } from './services/notificationManager.js';
+
+// Export schema
+export { todoSchema } from './schema.js';

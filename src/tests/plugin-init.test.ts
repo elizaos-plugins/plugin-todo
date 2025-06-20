@@ -10,6 +10,7 @@ describe('TodoPlugin Initialization', () => {
       agentId: 'test-agent' as UUID,
       getSetting: () => undefined,
       db: null, // No database available
+      getService: () => null, // No services available in test
     } as any;
   };
 

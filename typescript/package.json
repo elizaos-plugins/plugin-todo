@@ -53,8 +53,8 @@
     "format:check": "bunx @biomejs/biome format ."
   },
   "dependencies": {
-    "@elizaos/core": "workspace:*",
-    "drizzle-orm": "^0.45.1",
+    "@elizaos/core": "2.0.0-alpha.3",
+    "drizzle-orm": "^0.30.10",
     "zod": "^4.3.6"
   },
   "devDependencies": {
@@ -63,7 +63,7 @@
     "typescript": "^5.9.3"
   },
   "peerDependencies": {
-    "@elizaos/core": "workspace:*",
+    "@elizaos/core": "2.0.0-alpha.3",
     "zod": "^4.3.6"
   },
   "publishConfig": {

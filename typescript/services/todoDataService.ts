@@ -10,8 +10,26 @@ type TodoRow = InferSelectModel<typeof todosTable>;
 
 type DrizzleDatabase = NodePgDatabase | PgliteDatabase;
 
+/**
+ * Get the Drizzle database instance from the runtime.
+ *
+ * runtime.db is a getter that returns this.adapter.db — it throws when the
+ * adapter hasn't been registered (e.g. plugin-sql failed to load).
+ * Guard with a clear error message following the pattern from plugin-trust.
+ */
 function getDb(runtime: IAgentRuntime): DrizzleDatabase {
-  return runtime.db as DrizzleDatabase;
+  let db: DrizzleDatabase | undefined;
+  try {
+    db = runtime.db as DrizzleDatabase | undefined;
+  } catch {
+    // adapter not set — runtime.db getter threw
+  }
+  if (!db) {
+    throw new Error(
+      "[plugin-todo] Database not available. Ensure @elizaos/plugin-sql is loaded and initialized.",
+    );
+  }
+  return db;
 }
 
 export interface TodoData {

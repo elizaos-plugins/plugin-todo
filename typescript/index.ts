@@ -28,28 +28,32 @@ export const todoPlugin: Plugin = {
   schema: todoSchema,
 
   async init(_config: Record<string, string>, runtime: IAgentRuntime): Promise<void> {
-    try {
-      if (runtime.db) {
-        logger.info("Database available, TodoPlugin ready for operation");
-      } else {
-        logger.warn("No database instance available, operations will be limited");
-      }
+    // Plugin init() runs during runtime.initialize() BEFORE the adapter is
+    // fully initialized (adapter.init() / migrations happen after all plugin
+    // inits).  Following the pattern from plugin-personality: check the
+    // adapter property directly instead of going through the runtime.db
+    // getter (which throws when the adapter is undefined).  Actual database
+    // work is deferred to services, providers, and actions that run later
+    // once the runtime is fully up.
+    const runtimeRecord = runtime as unknown as Record<string, unknown>;
+    const adapterReady =
+      typeof runtimeRecord.adapter === "object" &&
+      runtimeRecord.adapter !== null;
 
-      const messageDeliveryService = runtime.getService("MESSAGE_DELIVERY" as never);
-      if (messageDeliveryService) {
-        logger.info("Rolodex message delivery service available");
-      } else {
-        logger.warn("Rolodex not available - only in-app notifications will work");
-      }
-
-      logger.info("TodoPlugin initialized");
-    } catch (error) {
-      logger.error(
-        "Error initializing TodoPlugin:",
-        error instanceof Error ? error.message : String(error)
-      );
-      throw error;
+    if (adapterReady) {
+      logger.info("[TodoPlugin] Database adapter registered — ready for operation");
+    } else {
+      logger.warn("[TodoPlugin] No database adapter yet — operations will be limited");
     }
+
+    const messageDeliveryService = runtime.getService("MESSAGE_DELIVERY" as never);
+    if (messageDeliveryService) {
+      logger.info("[TodoPlugin] Rolodex message delivery service available");
+    } else {
+      logger.warn("[TodoPlugin] Rolodex not available — only in-app notifications will work");
+    }
+
+    logger.info("[TodoPlugin] Initialized");
   },
 };
 

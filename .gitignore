@@ -68,3 +68,4 @@ __pycache__
 .venv
 *.egg-info
 package-lock.json
+dist

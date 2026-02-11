@@ -10,6 +10,8 @@ keywords = ["ai", "agent", "todo", "task-management", "elizaos"]
 categories = ["data-structures", "asynchronous"]
 readme = "README.md"
 
+include = ["src/**/*", "Cargo.toml", "README.md", "LICENSE"]
+
 [lib]
 crate-type = ["cdylib", "rlib"]
 
@@ -20,7 +22,7 @@ wasm = ["wasm-bindgen", "wasm-bindgen-futures", "js-sys", "web-sys", "console_er
 
 [dependencies]
 # Core runtime types (for native plugin integration)
-elizaos = { version = "2.0.0", path = "../../../packages/rust", default-features = false, features = ["native"] }
+elizaos = "2.0.0"
 
 # Serialization
 serde = { version = "1.0", features = ["derive"] }

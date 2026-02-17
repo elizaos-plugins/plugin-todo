@@ -6,11 +6,10 @@ import {
   type Provider,
   type ProviderResult,
   type State,
-  type UUID,
+  type UUID
 } from "@elizaos/core";
 import { allProviderDocs, type ProviderDoc } from "../generated/specs/specs";
 import { createTodoDataService } from "../services/todoDataService";
-
 const fallbackSpec: ProviderDoc = {
   name: "todos",
   description: "Information about the user's current tasks, completed tasks, and points",
@@ -20,8 +19,9 @@ const spec = allProviderDocs.find((doc) => doc.name === "todos") ?? fallbackSpec
 export const todosProvider: Provider = {
   name: spec.name,
   description: "Information about the user's current tasks, completed tasks, and points",
-  get: async (runtime: IAgentRuntime, message: Memory, state: State): Promise<ProviderResult> => {
-    try {
+    dynamic: true,
+get: async (runtime: IAgentRuntime, message: Memory, state: State): Promise<ProviderResult> => {
+try {
       logger.debug(
         "[TodosProvider] Received state:",
         JSON.stringify(state?.data?.room ?? "No room data in state", null, 2)

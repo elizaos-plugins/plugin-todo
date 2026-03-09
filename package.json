@@ -1,7 +1,7 @@
 {
   "name": "@elizaos/plugin-todo",
   "description": "Todo list plugin for ElizaOS",
-  "version": "1.0.0",
+  "version": "2.0.0-alpha.8",
   "type": "module",
   "private": true,
   "main": "dist/index.js",
@@ -40,8 +40,8 @@
     "tsup.config.ts"
   ],
   "dependencies": {
-    "@elizaos/core": "workspace:*",
-    "@elizaos/plugin-rolodex": "workspace:*",
+    "@elizaos/core": "alpha",
+    "@elizaos/plugin-rolodex": "^2.0.0-alpha.3",
     "drizzle-orm": "^0.30.10",
     "start-server-and-test": "^2.0.5",
     "zod": "3.24.2"

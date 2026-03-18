@@ -94,7 +94,7 @@ export class TodoDataService {
       logger.info(`Created todo: ${todo.id} - ${todo.name}`);
       return todo.id;
     } catch (error) {
-      logger.error('Error creating todo:', error);
+      logger.error(`Error creating todo: ${String(error)}`);
       throw error;
     }
   }
@@ -123,7 +123,7 @@ export class TodoDataService {
         tags: tags.map((t) => t.tag),
       } as TodoData;
     } catch (error) {
-      logger.error('Error getting todo:', error);
+      logger.error(`Error getting todo: ${String(error)}`);
       return null;
     }
   }
@@ -194,7 +194,7 @@ export class TodoDataService {
 
       return todosWithTags;
     } catch (error) {
-      logger.error('Error getting todos:', error);
+      logger.error(`Error getting todos: ${String(error)}`);
       return [];
     }
   }
@@ -230,7 +230,7 @@ export class TodoDataService {
 
       return true;
     } catch (error) {
-      logger.error('Error updating todo:', error);
+      logger.error(`Error updating todo: ${String(error)}`);
       return false;
     }
   }
@@ -247,7 +247,7 @@ export class TodoDataService {
       logger.info(`Deleted todo: ${todoId}`);
       return true;
     } catch (error) {
-      logger.error('Error deleting todo:', error);
+      logger.error(`Error deleting todo: ${String(error)}`);
       return false;
     }
   }
@@ -279,7 +279,7 @@ export class TodoDataService {
 
       return true;
     } catch (error) {
-      logger.error('Error adding tags:', error);
+      logger.error(`Error adding tags: ${String(error)}`);
       return false;
     }
   }
@@ -302,7 +302,7 @@ export class TodoDataService {
 
       return true;
     } catch (error) {
-      logger.error('Error removing tags:', error);
+      logger.error(`Error removing tags: ${String(error)}`);
       return false;
     }
   }
@@ -356,7 +356,7 @@ export class TodoDataService {
 
       return todosWithTags;
     } catch (error) {
-      logger.error('Error getting overdue todos:', error);
+      logger.error(`Error getting overdue todos: ${String(error)}`);
       return [];
     }
   }
@@ -395,7 +395,7 @@ export class TodoDataService {
 
       return 0; // Return count of reset todos
     } catch (error) {
-      logger.error('Error resetting daily todos:', error);
+      logger.error(`Error resetting daily todos: ${String(error)}`);
       return 0;
     }
   }

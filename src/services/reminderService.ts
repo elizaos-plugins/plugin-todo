@@ -58,8 +58,8 @@ export class TodoReminderService extends Service {
 
     // Try to get rolodex services for external message delivery
     try {
-      this.rolodexMessageService = this.runtime.getService('MESSAGE_DELIVERY' as ServiceTypeName);
-      this.rolodexEntityService = this.runtime.getService('ENTITY_RELATIONSHIP' as ServiceTypeName);
+      this.rolodexMessageService = await this.runtime.getService('MESSAGE_DELIVERY' as ServiceTypeName);
+      this.rolodexEntityService = await this.runtime.getService('ENTITY_RELATIONSHIP' as ServiceTypeName);
       
       if (this.rolodexMessageService && this.rolodexEntityService) {
         logger.info('Rolodex services found - external message delivery enabled');
@@ -67,7 +67,7 @@ export class TodoReminderService extends Service {
         logger.warn('Rolodex services not found - only in-app notifications will be sent');
       }
     } catch (error) {
-      logger.warn('Could not initialize rolodex services:', error);
+      logger.warn(`Could not initialize rolodex services: ${String(error)}`);
     }
 
     // Start reminder checking loop
@@ -108,11 +108,11 @@ export class TodoReminderService extends Service {
         try {
           await this.processTodoReminder(todo);
         } catch (error) {
-          logger.error(`Error processing reminder for todo ${todo.id}:`, error);
+          logger.error(`Error processing reminder for todo ${todo.id}: ${String(error)}`);
         }
       }
     } catch (error) {
-      logger.error('Error checking tasks for reminders:', error);
+      logger.error(`Error checking tasks for reminders: ${String(error)}`);
     }
   }
 
@@ -204,13 +204,13 @@ export class TodoReminderService extends Service {
           
           logger.info(`Sent ${reminderType} reminder via rolodex for todo: ${todo.name}`);
         } catch (error) {
-          logger.error('Failed to send reminder via rolodex:', error);
+          logger.error(`Failed to send reminder via rolodex: ${String(error)}`);
         }
       }
 
       logger.info(`Sent ${reminderType} reminder for todo: ${todo.name}`);
     } catch (error) {
-      logger.error(`Error sending reminder for todo ${todo.id}:`, error);
+      logger.error(`Error sending reminder for todo ${todo.id}: ${String(error)}`);
     }
   }
 
@@ -236,7 +236,7 @@ export class TodoReminderService extends Service {
         logger.warn('Rolodex message delivery failed:', result?.error || 'Unknown error');
       }
     } catch (error) {
-      logger.error('Error sending reminder through rolodex:', error);
+      logger.error(`Error sending reminder through rolodex: ${String(error)}`);
       throw error;
     }
   }
@@ -289,7 +289,7 @@ export class TodoReminderService extends Service {
   }
 
   static async stop(runtime: IAgentRuntime): Promise<void> {
-    const service = runtime.getService(TodoReminderService.serviceType);
-    if (service) await service.stop();
+    const service = await runtime.getService(TodoReminderService.serviceType);
+    if (service) await (service as TodoReminderService).stop();
   }
 }

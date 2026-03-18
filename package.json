@@ -1,9 +1,9 @@
 {
   "name": "@elizaos/plugin-todo",
   "description": "Todo list plugin for ElizaOS",
-  "version": "2.0.0-alpha.8",
+  "version": "2.0.0-alpha.11",
   "type": "module",
-  "private": true,
+  "private": false,
   "main": "dist/index.js",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -41,7 +41,7 @@
   ],
   "dependencies": {
     "@elizaos/core": "alpha",
-    "@elizaos/plugin-rolodex": "^2.0.0-alpha.3",
+    "@elizaos/plugin-rolodex": "alpha",
     "drizzle-orm": "^0.30.10",
     "start-server-and-test": "^2.0.5",
     "zod": "3.24.2"
@@ -64,7 +64,7 @@
     "build": "tsup",
     "lint": "prettier --write ./src",
     "test": "elizaos test",
-    "publish": "elizaos publish",
+    "_publish": "elizaos publish",
     "format": "prettier --write ./src",
     "format:check": "prettier --check ./src",
     "__test__": "bun test"

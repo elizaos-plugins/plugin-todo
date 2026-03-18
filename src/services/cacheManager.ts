@@ -319,7 +319,7 @@ export class CacheManager {
         try {
           await this.warmUpEntity(entityId);
         } catch (error) {
-          logger.debug(`Failed to warm up entity ${entityId}:`, error);
+          logger.debug(`Failed to warm up entity ${entityId}: ${String(error)}`);
         }
       }
 
@@ -328,13 +328,13 @@ export class CacheManager {
         try {
           await this.warmUpServiceHealth(serviceName);
         } catch (error) {
-          logger.debug(`Failed to warm up service health ${serviceName}:`, error);
+          logger.debug(`Failed to warm up service health ${serviceName}: ${String(error)}`);
         }
       }
 
       logger.info('Cache warm-up completed');
     } catch (error) {
-      logger.error('Error during cache warm-up:', error);
+      logger.error(`Error during cache warm-up: ${String(error)}`);
     }
   }
 

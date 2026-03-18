@@ -32,7 +32,7 @@ export class TodoIntegrationBridge extends Service {
   }
 
   static async stop(runtime: IAgentRuntime): Promise<void> {
-    const service = runtime.getService(TodoIntegrationBridge.serviceType);
-    if (service) await service.stop();
+    const service = await runtime.getService(TodoIntegrationBridge.serviceType);
+    if (service) await (service as TodoIntegrationBridge).stop();
   }
 }

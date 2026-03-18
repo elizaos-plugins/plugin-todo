@@ -56,7 +56,7 @@ export const TodoPlugin: Plugin = {
       }
 
       // Check for rolodex plugin availability
-      const messageDeliveryService = runtime.getService('MESSAGE_DELIVERY' as any);
+      const messageDeliveryService = await runtime.getService('MESSAGE_DELIVERY' as any);
       if (messageDeliveryService) {
         logger.info('Rolodex message delivery service available - external notifications enabled');
       } else {
@@ -65,7 +65,7 @@ export const TodoPlugin: Plugin = {
 
       logger.info('TodoPlugin initialized with reminder and integration capabilities');
     } catch (error) {
-      logger.error('Error initializing TodoPlugin:', error);
+      logger.error('Error initializing TodoPlugin:', String(error));
       throw error;
     }
   },

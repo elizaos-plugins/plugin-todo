@@ -87,7 +87,7 @@ export class NotificationManager {
         }
       }
     } catch (error) {
-      logger.error('Error processing notification queue:', error);
+      logger.error(`Error processing notification queue: ${String(error)}`);
     } finally {
       this.isProcessing = false;
     }
@@ -120,12 +120,9 @@ export class NotificationManager {
       }
 
       // Log notification for audit
-      logger.info(`Notification sent: ${notification.title}`, {
-        type: notification.type,
-        priority: notification.priority,
-      });
+      logger.info({ type: notification.type, priority: notification.priority }, `Notification sent: ${notification.title}`);
     } catch (error) {
-      logger.error('Error sending notification:', error);
+      logger.error(`Error sending notification: ${String(error)}`);
     }
   }
 
@@ -169,11 +166,7 @@ export class NotificationManager {
     // 2. Create and show the notification
     // 3. Handle click events on the notification
 
-    logger.debug('Browser notification would be sent:', {
-      title: notification.title,
-      body: notification.body,
-      type: notification.type,
-    });
+    logger.debug({ title: notification.title, body: notification.body, type: notification.type }, 'Browser notification would be sent');
   }
 
   /**

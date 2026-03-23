@@ -4,9 +4,8 @@ import logging
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING
 
-from elizaos.types import Provider, ProviderResult
-
 from elizaos_plugin_todo.data_service import create_todo_data_service
+from elizaos_plugin_todo.elizaos_compat import Provider, ProviderResult
 from elizaos_plugin_todo.types import TaskType, TodoFilters
 
 if TYPE_CHECKING:

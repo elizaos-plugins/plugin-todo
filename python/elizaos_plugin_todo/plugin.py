@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from elizaos.types import Action, ActionResult, Plugin
-
 from elizaos_plugin_todo.actions import (
     CANCEL_TODO_ACTION,
     COMPLETE_TODO_ACTION,
@@ -21,6 +19,7 @@ from elizaos_plugin_todo.actions import (
     validate_create_todo,
     validate_update_todo,
 )
+from elizaos_plugin_todo.elizaos_compat import Action, ActionResult, Plugin
 from elizaos_plugin_todo.providers import TODOS_PROVIDER
 
 

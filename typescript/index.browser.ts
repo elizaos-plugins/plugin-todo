@@ -1,2 +1,3 @@
+import todoPluginDefault from "./index";
 export * from "./index";
-export { default } from "./index";
+export default todoPluginDefault;

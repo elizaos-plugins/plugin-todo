@@ -4,11 +4,26 @@ import type { InferSelectModel } from "drizzle-orm";
 import { and, desc, eq, isNull, not, or, type SQL } from "drizzle-orm";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import type { PgliteDatabase } from "drizzle-orm/pglite";
-import { todosTable, todoTagsTable } from "../schema";
+import { todoSchema, todosTable, todoTagsTable } from "../schema";
 
 type TodoRow = InferSelectModel<typeof todosTable>;
 
 type DrizzleDatabase = NodePgDatabase | PgliteDatabase;
+type RuntimeWithMigrationSupport = IAgentRuntime & {
+  adapter?: {
+    runPluginMigrations?: (
+      plugins: Array<{ name: string; schema?: Record<string, unknown> }>,
+      options?: {
+        verbose?: boolean;
+        force?: boolean;
+        dryRun?: boolean;
+      }
+    ) => Promise<void>;
+  };
+};
+
+const TODO_PLUGIN_NAME = "@elizaos/plugin-todo";
+const schemaBootstrapPromises = new WeakMap<IAgentRuntime, Promise<void>>();
 
 /**
  * Get the Drizzle database instance from the runtime.
@@ -17,7 +32,7 @@ type DrizzleDatabase = NodePgDatabase | PgliteDatabase;
  * adapter hasn't been registered (e.g. plugin-sql failed to load).
  * Guard with a clear error message following the pattern from plugin-trust.
  */
-function getDb(runtime: IAgentRuntime): DrizzleDatabase {
+function requireDb(runtime: IAgentRuntime): DrizzleDatabase {
   let db: DrizzleDatabase | undefined;
   try {
     db = runtime.db as DrizzleDatabase | undefined;
@@ -30,6 +45,43 @@ function getDb(runtime: IAgentRuntime): DrizzleDatabase {
     );
   }
   return db;
+}
+
+async function ensureTodoSchema(runtime: IAgentRuntime): Promise<void> {
+  const existing = schemaBootstrapPromises.get(runtime);
+  if (existing) {
+    await existing;
+    return;
+  }
+
+  const bootstrap = (async () => {
+    const adapter = (runtime as RuntimeWithMigrationSupport).adapter;
+    if (typeof adapter?.runPluginMigrations !== "function") {
+      return;
+    }
+
+    const forceDestructive =
+      typeof process !== "undefined" &&
+      process.env?.ELIZA_ALLOW_DESTRUCTIVE_MIGRATIONS === "true";
+
+    await adapter.runPluginMigrations(
+      [{ name: TODO_PLUGIN_NAME, schema: todoSchema as Record<string, unknown> }],
+      {
+        verbose: false,
+        force: forceDestructive,
+        dryRun: false,
+      }
+    );
+  })();
+
+  schemaBootstrapPromises.set(runtime, bootstrap);
+
+  try {
+    await bootstrap;
+  } catch (error) {
+    schemaBootstrapPromises.delete(runtime);
+    throw error;
+  }
 }
 
 export interface TodoData {
@@ -59,6 +111,11 @@ export class TodoDataService {
     this.runtime = runtime;
   }
 
+  protected async getDb(): Promise<DrizzleDatabase> {
+    await ensureTodoSchema(this.runtime);
+    return requireDb(this.runtime);
+  }
+
   async createTodo(data: {
     agentId: UUID;
     worldId: UUID;
@@ -73,7 +130,7 @@ export class TodoDataService {
     metadata?: Record<string, unknown>;
     tags?: string[];
   }): Promise<UUID> {
-    const db = getDb(this.runtime);
+    const db = await this.getDb();
 
     const [todo] = await db
       .insert(todosTable)
@@ -110,7 +167,7 @@ export class TodoDataService {
   }
 
   async getTodo(todoId: UUID): Promise<TodoData | null> {
-    const db = getDb(this.runtime);
+    const db = await this.getDb();
 
     const todos = await db.select().from(todosTable).where(eq(todosTable.id, todoId));
     const todo = todos[0];
@@ -140,7 +197,7 @@ export class TodoDataService {
     tags?: string[];
     limit?: number;
   }): Promise<TodoData[]> {
-    const db = getDb(this.runtime);
+    const db = await this.getDb();
 
     const conditions: SQL[] = [];
     if (filters?.agentId) conditions.push(eq(todosTable.agentId, filters.agentId));
@@ -197,7 +254,7 @@ export class TodoDataService {
       metadata?: Record<string, unknown>;
     }
   ): Promise<boolean> {
-    const db = getDb(this.runtime);
+    const db = await this.getDb();
 
     const updateData = {
       ...updates,
@@ -210,7 +267,7 @@ export class TodoDataService {
   }
 
   async deleteTodo(todoId: UUID): Promise<boolean> {
-    const db = getDb(this.runtime);
+    const db = await this.getDb();
 
     await db.delete(todosTable).where(eq(todosTable.id, todoId));
 
@@ -219,7 +276,7 @@ export class TodoDataService {
   }
 
   async addTags(todoId: UUID, tags: string[]): Promise<boolean> {
-    const db = getDb(this.runtime);
+    const db = await this.getDb();
 
     const existingTags = await db
       .select({ tag: todoTagsTable.tag })
@@ -242,7 +299,7 @@ export class TodoDataService {
   }
 
   async removeTags(todoId: UUID, tags: string[]): Promise<boolean> {
-    const db = getDb(this.runtime);
+    const db = await this.getDb();
 
     await db
       .delete(todoTagsTable)
@@ -260,7 +317,7 @@ export class TodoDataService {
     entityId?: UUID;
   }): Promise<TodoData[]> {
     try {
-      const db = getDb(this.runtime);
+      const db = await this.getDb();
 
       const conditions: SQL[] = [
         eq(todosTable.isCompleted, false),
@@ -315,7 +372,7 @@ export class TodoDataService {
     entityId?: UUID;
   }): Promise<number> {
     try {
-      const db = getDb(this.runtime);
+      const db = await this.getDb();
 
       const conditions: SQL[] = [eq(todosTable.type, "daily"), eq(todosTable.isCompleted, true)];
 

@@ -6,10 +6,6 @@
     "emitDeclarationOnly": true,
     "noEmit": false,
     "outDir": "dist",
-    "baseUrl": ".",
-    "paths": {
-      "@elizaos/core": ["../../../packages/typescript/dist"]
-    },
     "skipLibCheck": true
   },
   "include": ["**/*.ts"],

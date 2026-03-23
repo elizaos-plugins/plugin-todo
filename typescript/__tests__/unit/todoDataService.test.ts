@@ -1,5 +1,5 @@
 import type { IAgentRuntime, UUID } from "@elizaos/core";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createTodoDataService, TodoDataService } from "../../services/todoDataService";
 
 // ---------------------------------------------------------------------------
@@ -164,6 +164,12 @@ class TestTodoDataService extends TodoDataService {
       ...r,
       tags: this.tagStore.get(r.id as string) ?? [],
     })) as never;
+  }
+}
+
+class BootstrappingTodoDataService extends TodoDataService {
+  async exposeDbForTest() {
+    return this.getDb();
   }
 }
 
@@ -651,6 +657,56 @@ describe("TodoDataService", () => {
       } as unknown as IAgentRuntime;
       const ds = createTodoDataService(mockRuntime);
       expect(ds).toBeInstanceOf(TodoDataService);
+    });
+
+    it("runs todo schema migrations before touching the database", async () => {
+      const db = {};
+      const runPluginMigrations = vi.fn().mockResolvedValue(undefined);
+      const runtime = {
+        agentId: crypto.randomUUID() as UUID,
+        adapter: {
+          runPluginMigrations,
+        },
+        db,
+      } as unknown as IAgentRuntime;
+
+      const service = new BootstrappingTodoDataService(runtime);
+      const resolvedDb = await service.exposeDbForTest();
+
+      expect(resolvedDb).toBe(db);
+      expect(runPluginMigrations).toHaveBeenCalledTimes(1);
+      expect(runPluginMigrations).toHaveBeenCalledWith(
+        [
+          {
+            name: "@elizaos/plugin-todo",
+            schema: expect.any(Object),
+          },
+        ],
+        {
+          verbose: false,
+          force: false,
+          dryRun: false,
+        }
+      );
+    });
+
+    it("caches schema bootstrap per runtime", async () => {
+      const db = {};
+      const runPluginMigrations = vi.fn().mockResolvedValue(undefined);
+      const runtime = {
+        agentId: crypto.randomUUID() as UUID,
+        adapter: {
+          runPluginMigrations,
+        },
+        db,
+      } as unknown as IAgentRuntime;
+
+      const service = new BootstrappingTodoDataService(runtime);
+
+      await service.exposeDbForTest();
+      await service.exposeDbForTest();
+
+      expect(runPluginMigrations).toHaveBeenCalledTimes(1);
     });
   });
 });

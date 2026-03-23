@@ -74,7 +74,7 @@
     "zod": "^4.3.6"
   },
   "scripts": {
-    "build:prompts": "node ../../packages/prompts/scripts/generate-plugin-prompts.js ./prompts ./typescript/generated/prompts --target all",
+    "build:prompts": "node ./prompts/scripts/generate-specs.js",
     "build": "npm run build:prompts && bun run build:ts && bun run build:rust && bun run build:python",
     "build:ts": "cd typescript && bun run build.ts",
     "build:rust": "test -d rust && cd rust && cargo build --release || echo 'Rust build skipped - no rust directory'",
@@ -87,7 +87,7 @@
     "clean": "rm -rf typescript/dist python/dist rust/target .turbo node_modules",
     "format": "bunx @biomejs/biome format --write ./typescript",
     "format:check": "bunx @biomejs/biome format ./typescript",
-    "typecheck": "tsc --noEmit -p typescript/tsconfig.json",
+    "typecheck": "tsc --noEmit -p typescript/tsconfig.typecheck.json",
     "typecheck:python": "cd python && python3 -m mypy elizaos_plugin_todo",
     "test": "bun run test:ts && bun run test:rust && bun run test:python",
     "test:ts": "cd typescript && vitest run || echo 'TypeScript tests skipped - no tests found'",

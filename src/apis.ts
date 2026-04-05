@@ -23,10 +23,7 @@ const __dirname = path.dirname(__filename);
 // relative to the package root (which is two levels up from src/plugin-todo)
 const frontendDist = path.resolve(__dirname, '../dist');
 
-const frontPagePath = path.resolve(frontendDist, 'index.html');
 const assetsPath = path.resolve(frontendDist, 'assets');
-console.log('*** frontPagePath', frontPagePath);
-console.log('*** assetsPath', assetsPath);
 /**
  * Definition of routes with type, path, and handler for each route.
  * Routes include fetching trending tokens, wallet information, tweets, sentiment analysis, and signals.

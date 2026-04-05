@@ -64,7 +64,7 @@ export class TodoReminderService extends Service {
       if (this.rolodexMessageService && this.rolodexEntityService) {
         logger.info('Rolodex services found - external message delivery enabled');
       } else {
-        logger.warn('Rolodex services not found - only in-app notifications will be sent');
+        logger.info('Rolodex services not found - only in-app notifications will be sent');
       }
     } catch (error) {
       logger.warn(`Could not initialize rolodex services: ${String(error)}`);

@@ -60,7 +60,7 @@ export const TodoPlugin: Plugin = {
       if (messageDeliveryService) {
         logger.info('Rolodex message delivery service available - external notifications enabled');
       } else {
-        logger.warn('Rolodex not available - only in-app notifications will work');
+        logger.info('Rolodex not available - only in-app notifications will work');
       }
 
       logger.info('TodoPlugin initialized with reminder and integration capabilities');

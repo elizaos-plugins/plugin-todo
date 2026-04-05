@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { getTableConfig } from 'drizzle-orm/pg-core';
 import {
   todosTable,
   todoTagsTable,
@@ -90,6 +91,11 @@ describe('Todo Schema', () => {
       expect(todoSchema.tables).toBeDefined();
       expect(todoSchema.tables.todos).toBeDefined();
       expect(todoSchema.tables.todoTags).toBeDefined();
+    });
+
+    it('should use the dedicated todo schema', () => {
+      expect(getTableConfig(todosTable).schema).toBe('todo');
+      expect(getTableConfig(todoTagsTable).schema).toBe('todo');
     });
   });
 });

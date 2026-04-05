@@ -6,6 +6,13 @@ import {
   todoTagsTable,
 } from '../schema';
 
+type TodoDatabase = {
+  insert: (...args: any[]) => any;
+  select: (...args: any[]) => any;
+  update: (...args: any[]) => any;
+  delete: (...args: any[]) => any;
+};
+
 /**
  * Core todo data structure
  */
@@ -39,6 +46,10 @@ export class TodoDataService {
     this.runtime = runtime;
   }
 
+  private getDb(): TodoDatabase {
+    return this.runtime.db as TodoDatabase;
+  }
+
   /**
    * Create a new todo
    */
@@ -57,7 +68,7 @@ export class TodoDataService {
     tags?: string[];
   }): Promise<UUID> {
     try {
-      const { db } = this.runtime;
+      const db = this.getDb();
 
       // Create the todo
       const [todo] = await db
@@ -104,7 +115,7 @@ export class TodoDataService {
    */
   async getTodo(todoId: UUID): Promise<TodoData | null> {
     try {
-      const { db } = this.runtime;
+      const db = this.getDb();
 
       const [todo] = await db.select().from(todosTable).where(eq(todosTable.id, todoId)).limit(1);
 
@@ -142,7 +153,7 @@ export class TodoDataService {
     limit?: number;
   }): Promise<TodoData[]> {
     try {
-      const { db } = this.runtime;
+      const db = this.getDb();
 
       let query = db.select().from(todosTable);
 
@@ -216,7 +227,7 @@ export class TodoDataService {
     }
   ): Promise<boolean> {
     try {
-      const { db } = this.runtime;
+      const db = this.getDb();
 
       const updateData: any = {
         ...updates,
@@ -240,7 +251,7 @@ export class TodoDataService {
    */
   async deleteTodo(todoId: UUID): Promise<boolean> {
     try {
-      const { db } = this.runtime;
+      const db = this.getDb();
 
       await db.delete(todosTable).where(eq(todosTable.id, todoId));
 
@@ -257,7 +268,7 @@ export class TodoDataService {
    */
   async addTags(todoId: UUID, tags: string[]): Promise<boolean> {
     try {
-      const { db } = this.runtime;
+      const db = this.getDb();
 
       // Filter out existing tags
       const existingTags = await db
@@ -289,7 +300,7 @@ export class TodoDataService {
    */
   async removeTags(todoId: UUID, tags: string[]): Promise<boolean> {
     try {
-      const { db } = this.runtime;
+      const db = this.getDb();
 
       await db
         .delete(todoTagsTable)
@@ -317,7 +328,7 @@ export class TodoDataService {
     entityId?: UUID;
   }): Promise<TodoData[]> {
     try {
-      const { db } = this.runtime;
+      const db = this.getDb();
 
       const conditions: any[] = [
         eq(todosTable.isCompleted, false),
@@ -371,7 +382,7 @@ export class TodoDataService {
     entityId?: UUID;
   }): Promise<number> {
     try {
-      const { db } = this.runtime;
+      const db = this.getDb();
 
       const conditions: any[] = [eq(todosTable.type, 'daily'), eq(todosTable.isCompleted, true)];
 

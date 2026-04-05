@@ -1,6 +1,6 @@
 import { relations, sql } from 'drizzle-orm';
 import {
-  pgTable,
+  pgSchema,
   text,
   integer,
   index,
@@ -11,10 +11,12 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 
+const todoSchemaNamespace = pgSchema('todo');
+
 /**
  * Todos table - stores the main todo items
  */
-export const todosTable = pgTable(
+export const todosTable = todoSchemaNamespace.table(
   'todos',
   {
     id: uuid('id').primaryKey().defaultRandom(),
@@ -53,7 +55,7 @@ export const todosTable = pgTable(
 /**
  * Todo tags table - stores tags associated with todos
  */
-export const todoTagsTable = pgTable(
+export const todoTagsTable = todoSchemaNamespace.table(
   'todo_tags',
   {
     id: uuid('id').primaryKey().defaultRandom(),

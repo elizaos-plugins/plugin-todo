@@ -69,7 +69,7 @@ describe('Reminder and Rolodex Integration', () => {
 
     const service = await TodoReminderService.start(noRolodexRuntime);
     
-    expect(logger.warn).toHaveBeenCalledWith(
+    expect(logger.info).toHaveBeenCalledWith(
       expect.stringContaining('Rolodex services not found')
     );
 

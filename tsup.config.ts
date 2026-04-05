@@ -10,6 +10,8 @@ export default defineConfig({
   dts: true, // generate .d.ts so consumers get proper types
   external: [
     'dotenv', // Externalize dotenv to prevent bundling
+    'drizzle-orm',
+    'drizzle-orm/pg-core',
     'fs', // Externalize fs to use Node.js built-in module
     'path', // Externalize other built-ins if necessary
     'https',
